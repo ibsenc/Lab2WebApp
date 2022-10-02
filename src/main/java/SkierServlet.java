@@ -131,7 +131,7 @@ public class SkierServlet extends HttpServlet {
         return;
       }
 
-      // Read deserialize JSON into Object
+      // Deserialize JSON into Object
 
       LiftRide liftRide = null;
       try {
