@@ -4,7 +4,8 @@
 ### Serverlet Setup:
 1. Git clone this repository. It is recommended to use this serverlet on Intellij Ultimate Edition.
 2. Ensure Tomcat server is set up using these instructions: [Step 4: Install Tomcat locally and set up Tomcat in IntelliJ](https://github.com/gortonator/bsds-6650/blob/master/labs/lab-2.md#step-4-install-tomcat-locally-and-set-up-tomcat-in-intellij).
-3. For remote API requests, set up an EC2 instance with a Tomcat server. See [Lab1](https://github.com/gortonator/bsds-6650/blob/master/labs/lab-1.md) for more information. Then, deploy the war file to the EC2 instance using these instructions: [Step 5: Deploy WAR file to Tomcat server in EC2](https://github.com/gortonator/bsds-6650/blob/master/labs/lab-2.md#step-5-deploy-war-file-to-tomcat-server-in-ec2). See section [To deploy an updated war file to EC2](https://github.com/ibsenc/Lab2WebApp/edit/main/README.md#to-deploy-an-updated-war-file-to-ec2) for an example and tips.
+3. For remote API requests, set up an EC2 instance with a Tomcat server. See [Lab1](https://github.com/gortonator/bsds-6650/blob/master/labs/lab-1.md) for more information.
+4. Deploy the war file to the EC2 instance using these instructions: [Step 5: Deploy WAR file to Tomcat server in EC2](https://github.com/gortonator/bsds-6650/blob/master/labs/lab-2.md#step-5-deploy-war-file-to-tomcat-server-in-ec2). See section [To deploy an updated war file to EC2](https://github.com/ibsenc/Lab2WebApp/edit/main/README.md#to-deploy-an-updated-war-file-to-ec2) for an example and tips.
 
 ### To Access POST and GET endpoints:
 #### Locally:
