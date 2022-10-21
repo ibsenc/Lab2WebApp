@@ -64,24 +64,20 @@ public class SkierServlet extends HttpServlet {
   }
 
   private boolean isUrlValid(String[] urlParts) {
-    // TODO: validate the request url path according to the API spec
-    // urlPath  = "/1/seasons/2019/day/1/skier/123"
-    // urlParts = [, 1, seasons, 2019, day, 1, skier, 123]
     // From Swagger: "/{resortID}/seasons/{seasonID}/days/{dayID}/skiers/{skierID}"
+    // example urlParts = [, 1, seasons, 2019, day, 1, skier, 123]
 
     return (isInteger(urlParts[RESORT_ID_INDEX]) &&
-        urlParts[SEASON_PARAM_INDEX].contains("season") &&
+        urlParts[SEASON_PARAM_INDEX].equals("seasons") &&
         isInteger(urlParts[SEASON_ID_INDEX]) &&
-        urlParts[DAY_PARAM_INDEX].contains("day") &&
+        urlParts[DAY_PARAM_INDEX].equals("days") &&
         isInteger(urlParts[DAY_ID_INDEX]) &&
-        urlParts[SKIER_PARAM_INDEX].contains("skier")
-        && isInteger(urlParts[SKIER_ID_INDEX]));
+        urlParts[SKIER_PARAM_INDEX].equals("skiers") &&
+        isInteger(urlParts[SKIER_ID_INDEX]));
   }
 
   private boolean isInteger(String s) {
-    if (s == null) {
-      return false;
-    }
+    if (s == null) return false;
 
     try {
       int integer = Integer.parseInt(s);
