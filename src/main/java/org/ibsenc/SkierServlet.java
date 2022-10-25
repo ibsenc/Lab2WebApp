@@ -1,3 +1,5 @@
+package org.ibsenc;
+
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,9 +12,10 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.ibsenc.LiftRide;
+import org.ibsenc.exceptions.InvalidFieldException;
+import org.ibsenc.exceptions.ParameterException;
 
-@WebServlet(name = "SkierServlet", value = "/SkierServlet")
+@WebServlet(name = "org.ibsenc.SkierServlet", value = "/org.ibsenc.SkierServlet")
 public class SkierServlet extends HttpServlet {
   private ObjectMapper om = new ObjectMapper();
   private static final Integer SKIER_ID_MIN = 1;
@@ -42,7 +45,7 @@ public class SkierServlet extends HttpServlet {
     // check we have a URL!
     if (urlPath == null || urlPath.isEmpty()) {
       res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createErrorMessage("missing parameters"));
+      res.getWriter().write(createJsonErrorMessage("missing parameters"));
       return;
     }
 
@@ -60,7 +63,7 @@ public class SkierServlet extends HttpServlet {
       sb.append(String.format("Day ID: %s\n", urlParts[DAY_ID_INDEX]));
       sb.append(String.format("Skier ID: %s\n", urlParts[SKIER_ID_INDEX]));
 
-      res.getWriter().write(createErrorMessage(sb.toString()));
+      res.getWriter().write(createJsonErrorMessage(sb.toString()));
     }
   }
 
@@ -100,130 +103,54 @@ public class SkierServlet extends HttpServlet {
     res.setCharacterEncoding("UTF-8");
     String urlPath = req.getPathInfo();
 
+    // Parse url, validate, and get parts
     String[] urlParts = getUrlParts(urlPath, res);
     if (urlParts == null) return;
 
     PrintWriter out = res.getWriter();
     try {
-
-      // Process request body
-
-      StringBuilder sb = new StringBuilder();
-      BufferedReader buffIn = req.getReader();
-      String line;
-      while( (line = buffIn.readLine()) != null) {
-        sb.append(line);
-      }
-
-      if (!isValidJSON(sb.toString())) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("Body must be valid JSON."));
-        return;
-      }
+      // Get JSON from request body
+      String jsonPayload = getJson(req, res);
+      if (jsonPayload == null) return;
 
       // Deserialize JSON into Object
-
-      LiftRide liftRide = null;
-      try {
-        liftRide = om.readValue(sb.toString(), LiftRide.class);
-      } catch (Exception e) {
-        System.out.println(e);
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("Failed to deserialize json."));
-        return;
-      }
+      LiftRide liftRide = createLiftRide(jsonPayload, res);
 
       if (liftRide == null) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("Invalid input."));
+        res.getWriter().write(createJsonErrorMessage("Invalid input."));
         return;
       }
 
-      // Process path parameters
-
+      // Sets LiftRide fields from the given path parameters
       try {
-        liftRide.setResortID(Integer.parseInt(urlParts[RESORT_ID_INDEX]));
-      } catch (NumberFormatException e) {
+        processPathParams(liftRide, urlParts);
+      } catch (ParameterException e) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("resortID could not be parsed to an integer."));
+        res.getWriter().write(createJsonErrorMessage(e.getMessage()));
         return;
       }
 
+      // Validate LiftRide fields
       try {
-        liftRide.setSkierID(Integer.parseInt(urlParts[SKIER_ID_INDEX]));
-      } catch (NumberFormatException e) {
+        validateFields(liftRide);
+      } catch (InvalidFieldException e) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("skierID could not be parsed to an integer."));
-        return;
-      }
-
-      liftRide.setSeasonID(urlParts[SEASON_ID_INDEX]);
-      liftRide.setDayID(urlParts[DAY_ID_INDEX]);
-
-      // Validate the LiftRide fields
-
-      if (!isValidInteger(liftRide.getSkierID(), SKIER_ID_MIN, SKIER_ID_MAX)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(String.format(
-            "skierID must be an integer between %d and %d.", SKIER_ID_MIN, SKIER_ID_MAX)));
-        return;
-      }
-
-      if (!isValidInteger(liftRide.getResortID(), RESORT_ID_MIN, RESORT_ID_MAX)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(String.format(
-            "resortID must be an integer between %d and %d.", RESORT_ID_MIN, RESORT_ID_MAX)));
-        return;
-      }
-
-      if (!isValidInteger(liftRide.getLiftID(), LIFT_ID_MIN, LIFT_ID_MAX)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(String.format(
-            "liftID must be an integer between %d and %d.", LIFT_ID_MIN, LIFT_ID_MAX)));
-        return;
-      }
-
-      if (!isValidString(liftRide.getSeasonID(), EXPECTED_SEASON_ID)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(
-            String.format("seasonID must be %s for the current season.", EXPECTED_SEASON_ID)));
-        return;
-      }
-
-      if (!isValidString(liftRide.getDayID(), EXPECTED_DAY_ID)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(
-            String.format("dayID must have a value of %s.", EXPECTED_DAY_ID)));
-        return;
-      }
-
-      if (!isValidInteger(liftRide.getTime(), TIME_MIN, TIME_MAX)) {
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage(String.format(
-            "time must be an integer between %d and %d.", TIME_MIN, TIME_MAX)));
+        res.getWriter().write(createJsonErrorMessage(e.getMessage()));
         return;
       }
 
       // Serialize Object back into JSON
-
-      String liftRideString = "";
-      try {
-        liftRideString = om.writeValueAsString(liftRide);
-      } catch (JsonProcessingException e) {
-        System.out.println(e);
-        res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createErrorMessage("Could not write to object LiftRide."));
-        return;
-      }
+      String liftRideString = getLiftRideAsJson(liftRide, res);
+      if (liftRideString == null) return;
 
       res.setStatus(HttpServletResponse.SC_OK);
       out.print(liftRideString);
       out.flush();
-    }
 
-    catch (Exception ex) {
+    } catch (Exception ex) {
       res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-      res.getWriter().write(createErrorMessage("Something went wrong!"));
+      res.getWriter().write(createJsonErrorMessage("Something went wrong!"));
       System.out.println(ex);
     }
   }
@@ -250,18 +177,112 @@ public class SkierServlet extends HttpServlet {
     // check we have a URL!
     if (urlPath == null || urlPath.isEmpty()) {
       res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createErrorMessage("Missing parameters."));
+      res.getWriter().write(createJsonErrorMessage("Missing parameters."));
       return null;
     }
 
     String[] urlParts = urlPath.split("/");
     if (!isUrlValid(urlParts)) {
       res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createErrorMessage("An invalid URL was provided."));
+      res.getWriter().write(createJsonErrorMessage("An invalid URL was provided."));
       return null;
     }
 
     return urlParts;
+  }
+
+  private String getJson(HttpServletRequest req, HttpServletResponse res) throws IOException {
+    StringBuilder sb = new StringBuilder();
+    BufferedReader buffIn = req.getReader();
+    String line;
+    while( (line = buffIn.readLine()) != null) {
+      sb.append(line);
+    }
+
+    if (!isValidJSON(sb.toString())) {
+      res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      res.getWriter().write(createJsonErrorMessage("Body must be valid JSON."));
+      return null;
+    }
+
+    return sb.toString();
+  }
+
+  private LiftRide createLiftRide(String json, HttpServletResponse res) throws IOException {
+    LiftRide liftRide;
+    try {
+      liftRide = om.readValue(json, LiftRide.class);
+    } catch (Exception e) {
+      System.out.println(e);
+      res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      res.getWriter().write(createJsonErrorMessage("Failed to deserialize json."));
+      return null;
+    }
+
+    return liftRide;
+  }
+
+  private void processPathParams(LiftRide liftRide, String[] urlParts) throws IOException, ParameterException {
+    try {
+      liftRide.setResortID(Integer.parseInt(urlParts[RESORT_ID_INDEX]));
+    } catch (NumberFormatException e) {
+      throw new ParameterException("resortID could not be parsed to an integer.");
+    }
+
+    try {
+      liftRide.setSkierID(Integer.parseInt(urlParts[SKIER_ID_INDEX]));
+    } catch (NumberFormatException e) {
+      throw new ParameterException("skierID could not be parsed to an integer.");
+    }
+
+    liftRide.setSeasonID(urlParts[SEASON_ID_INDEX]);
+    liftRide.setDayID(urlParts[DAY_ID_INDEX]);
+  }
+
+  private void validateFields(LiftRide liftRide) throws IOException, InvalidFieldException {
+    if (!isValidInteger(liftRide.getSkierID(), SKIER_ID_MIN, SKIER_ID_MAX)) {
+      throw new InvalidFieldException(String.format(
+          "skierID must be an integer between %d and %d.", SKIER_ID_MIN, SKIER_ID_MAX));
+    }
+
+    if (!isValidInteger(liftRide.getResortID(), RESORT_ID_MIN, RESORT_ID_MAX)) {
+      throw new InvalidFieldException(String.format(
+          "resortID must be an integer between %d and %d.", RESORT_ID_MIN, RESORT_ID_MAX));
+    }
+
+    if (!isValidInteger(liftRide.getLiftID(), LIFT_ID_MIN, LIFT_ID_MAX)) {
+      throw new InvalidFieldException(String.format(
+          "liftID must be an integer between %d and %d.", LIFT_ID_MIN, LIFT_ID_MAX));
+    }
+
+    if (!isValidString(liftRide.getSeasonID(), EXPECTED_SEASON_ID)) {
+      throw new InvalidFieldException(String.format(
+          "seasonID must be %s for the current season.", EXPECTED_SEASON_ID));
+    }
+
+    if (!isValidString(liftRide.getDayID(), EXPECTED_DAY_ID)) {
+      throw new InvalidFieldException(String.format(
+          "dayID must have a value of %s.", EXPECTED_DAY_ID));
+    }
+
+    if (!isValidInteger(liftRide.getTime(), TIME_MIN, TIME_MAX)) {
+      throw new InvalidFieldException(String.format(
+          "time must be an integer between %d and %d.", TIME_MIN, TIME_MAX));
+    }
+  }
+
+  private String getLiftRideAsJson(LiftRide liftRide, HttpServletResponse res) throws IOException {
+    String liftRideString;
+    try {
+      liftRideString = om.writeValueAsString(liftRide);
+    } catch (JsonProcessingException e) {
+      System.out.println(e);
+      res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      res.getWriter().write(createJsonErrorMessage("Could not write to object LiftRide."));
+      return null;
+    }
+
+    return liftRideString;
   }
 
   private boolean isValidInteger(Integer value, int low, int high) {
@@ -272,7 +293,7 @@ public class SkierServlet extends HttpServlet {
     return s != null && !s.isEmpty() && !s.trim().isEmpty() && s.equals(expectedValue);
   }
 
-  private String createErrorMessage(String message) {
+  private String createJsonErrorMessage(String message) {
     return String.format("{ \"message\": \"%s\" }", message);
   }
 }
