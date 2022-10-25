@@ -32,6 +32,7 @@ public class SkierServlet extends HttpServlet {
   private static final Integer SEASON_PARAM_INDEX = 2;
   private static final Integer DAY_PARAM_INDEX = 4;
   private static final Integer SKIER_PARAM_INDEX = 6;
+  private static final Integer EXPECTED_PARAM_COUNT = 8;
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
@@ -67,6 +68,10 @@ public class SkierServlet extends HttpServlet {
     // From Swagger: "/{resortID}/seasons/{seasonID}/days/{dayID}/skiers/{skierID}"
     // example urlParts = [, 1, seasons, 2019, day, 1, skier, 123]
 
+    if (urlParts.length != EXPECTED_PARAM_COUNT) {
+      return false;
+    }
+
     return (isInteger(urlParts[RESORT_ID_INDEX]) &&
         urlParts[SEASON_PARAM_INDEX].equals("seasons") &&
         isInteger(urlParts[SEASON_ID_INDEX]) &&
@@ -95,19 +100,8 @@ public class SkierServlet extends HttpServlet {
     res.setCharacterEncoding("UTF-8");
     String urlPath = req.getPathInfo();
 
-    // check we have a URL!
-    if (urlPath == null || urlPath.isEmpty()) {
-      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createErrorMessage("missing parameters"));
-      return;
-    }
-
-    String[] urlParts = urlPath.split("/");
-    if (!isUrlValid(urlParts)) {
-      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createErrorMessage("An invalid URL was provided."));
-      return;
-    }
+    String[] urlParts = getUrlParts(urlPath, res);
+    if (urlParts == null) return;
 
     PrintWriter out = res.getWriter();
     try {
@@ -250,6 +244,24 @@ public class SkierServlet extends HttpServlet {
     }
 
     return validJson;
+  }
+
+  private String[] getUrlParts(String urlPath, HttpServletResponse res) throws IOException {
+    // check we have a URL!
+    if (urlPath == null || urlPath.isEmpty()) {
+      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+      res.getWriter().write(createErrorMessage("Missing parameters."));
+      return null;
+    }
+
+    String[] urlParts = urlPath.split("/");
+    if (!isUrlValid(urlParts)) {
+      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+      res.getWriter().write(createErrorMessage("An invalid URL was provided."));
+      return null;
+    }
+
+    return urlParts;
   }
 
   private boolean isValidInteger(Integer value, int low, int high) {
