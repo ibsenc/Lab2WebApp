@@ -42,29 +42,20 @@ public class SkierServlet extends HttpServlet {
     res.setContentType("text/plain");
     String urlPath = req.getPathInfo();
 
-    // check we have a URL!
-    if (urlPath == null || urlPath.isEmpty()) {
-      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createJsonErrorMessage("missing parameters"));
-      return;
-    }
+    // Parse url, validate, and get parts
+    String[] urlParts = getUrlParts(urlPath, res);
+    if (urlParts == null) return;
 
-    String[] urlParts = urlPath.split("/");
+    StringBuilder sb = new StringBuilder();
+    sb.append("It works!\n\n");
+    sb.append("Retrieving lift ride information for:\n");
+    sb.append(String.format("Resort ID: %s\n", urlParts[RESORT_ID_INDEX]));
+    sb.append(String.format("Season ID: %s\n", urlParts[SEASON_ID_INDEX]));
+    sb.append(String.format("Day ID: %s\n", urlParts[DAY_ID_INDEX]));
+    sb.append(String.format("Skier ID: %s\n", urlParts[SKIER_ID_INDEX]));
 
-    if (!isUrlValid(urlParts)) {
-      res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-    } else {
-      res.setStatus(HttpServletResponse.SC_OK);
-      StringBuilder sb = new StringBuilder();
-      sb.append("It works!\n\n");
-      sb.append("Retrieving lift ride information for:\n");
-      sb.append(String.format("Resort ID: %s\n", urlParts[RESORT_ID_INDEX]));
-      sb.append(String.format("Season ID: %s\n", urlParts[SEASON_ID_INDEX]));
-      sb.append(String.format("Day ID: %s\n", urlParts[DAY_ID_INDEX]));
-      sb.append(String.format("Skier ID: %s\n", urlParts[SKIER_ID_INDEX]));
-
-      res.getWriter().write(createJsonErrorMessage(sb.toString()));
-    }
+    res.setStatus(HttpServletResponse.SC_OK);
+    res.getWriter().write(createJsonMessage(sb.toString()));
   }
 
   private boolean isUrlValid(String[] urlParts) {
@@ -118,7 +109,7 @@ public class SkierServlet extends HttpServlet {
 
       if (liftRide == null) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createJsonErrorMessage("Invalid input."));
+        res.getWriter().write(createJsonMessage("Invalid input."));
         return;
       }
 
@@ -127,7 +118,7 @@ public class SkierServlet extends HttpServlet {
         processPathParams(liftRide, urlParts);
       } catch (ParameterException e) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createJsonErrorMessage(e.getMessage()));
+        res.getWriter().write(createJsonMessage(e.getMessage()));
         return;
       }
 
@@ -136,7 +127,7 @@ public class SkierServlet extends HttpServlet {
         validateFields(liftRide);
       } catch (InvalidFieldException e) {
         res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        res.getWriter().write(createJsonErrorMessage(e.getMessage()));
+        res.getWriter().write(createJsonMessage(e.getMessage()));
         return;
       }
 
@@ -150,7 +141,7 @@ public class SkierServlet extends HttpServlet {
 
     } catch (Exception ex) {
       res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-      res.getWriter().write(createJsonErrorMessage("Something went wrong!"));
+      res.getWriter().write(createJsonMessage("Something went wrong!"));
       System.out.println(ex);
     }
   }
@@ -177,14 +168,14 @@ public class SkierServlet extends HttpServlet {
     // check we have a URL!
     if (urlPath == null || urlPath.isEmpty()) {
       res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createJsonErrorMessage("Missing parameters."));
+      res.getWriter().write(createJsonMessage("Missing parameters."));
       return null;
     }
 
     String[] urlParts = urlPath.split("/");
     if (!isUrlValid(urlParts)) {
       res.setStatus(HttpServletResponse.SC_NOT_FOUND);
-      res.getWriter().write(createJsonErrorMessage("An invalid URL was provided."));
+      res.getWriter().write(createJsonMessage("An invalid URL was provided."));
       return null;
     }
 
@@ -201,7 +192,7 @@ public class SkierServlet extends HttpServlet {
 
     if (!isValidJSON(sb.toString())) {
       res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      res.getWriter().write(createJsonErrorMessage("Body must be valid JSON."));
+      res.getWriter().write(createJsonMessage("Body must be valid JSON."));
       return null;
     }
 
@@ -215,7 +206,7 @@ public class SkierServlet extends HttpServlet {
     } catch (Exception e) {
       System.out.println(e);
       res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      res.getWriter().write(createJsonErrorMessage("Failed to deserialize json."));
+      res.getWriter().write(createJsonMessage("Failed to deserialize json."));
       return null;
     }
 
@@ -278,7 +269,7 @@ public class SkierServlet extends HttpServlet {
     } catch (JsonProcessingException e) {
       System.out.println(e);
       res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-      res.getWriter().write(createJsonErrorMessage("Could not write to object LiftRide."));
+      res.getWriter().write(createJsonMessage("Could not write to object LiftRide."));
       return null;
     }
 
@@ -293,7 +284,7 @@ public class SkierServlet extends HttpServlet {
     return s != null && !s.isEmpty() && !s.trim().isEmpty() && s.equals(expectedValue);
   }
 
-  private String createJsonErrorMessage(String message) {
+  private String createJsonMessage(String message) {
     return String.format("{ \"message\": \"%s\" }", message);
   }
 }
