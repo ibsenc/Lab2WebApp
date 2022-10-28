@@ -4,9 +4,14 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -17,7 +22,6 @@ import org.ibsenc.exceptions.ParameterException;
 
 @WebServlet(name = "org.ibsenc.SkierServlet", value = "/org.ibsenc.SkierServlet")
 public class SkierServlet extends HttpServlet {
-  private ObjectMapper om = new ObjectMapper();
   private static final Integer SKIER_ID_MIN = 1;
   private static final Integer SKIER_ID_MAX = 100000;
   private static final Integer RESORT_ID_MIN = 1;
@@ -36,6 +40,41 @@ public class SkierServlet extends HttpServlet {
   private static final Integer DAY_PARAM_INDEX = 4;
   private static final Integer SKIER_PARAM_INDEX = 6;
   private static final Integer EXPECTED_PARAM_COUNT = 8;
+  private ObjectMapper om;
+  private String rabbitMQHostName;
+  private RPCClient rpcClient;
+  private ConnectionFactory factory;
+  private Connection connection;
+  private Channel channel;
+
+  public void init() {
+    om = new ObjectMapper();
+    rabbitMQHostName = "localhost";
+
+    factory = new ConnectionFactory();
+    factory.setHost(rabbitMQHostName);
+
+    try {
+      connection = factory.newConnection();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
+    try {
+      channel = connection.createChannel();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    try {
+      rpcClient = new RPCClient(connection, channel);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
@@ -135,6 +174,11 @@ public class SkierServlet extends HttpServlet {
       String liftRideString = getLiftRideAsJson(liftRide, res);
       if (liftRideString == null) return;
 
+      // Add to queue
+      String response = rpcClient.call(liftRideString);
+      System.out.println("Response: " + response);
+
+      // Send OK status and response
       res.setStatus(HttpServletResponse.SC_OK);
       out.print(liftRideString);
       out.flush();
