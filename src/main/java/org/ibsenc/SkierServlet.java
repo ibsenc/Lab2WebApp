@@ -46,10 +46,12 @@ public class SkierServlet extends HttpServlet {
   private ConnectionFactory factory;
   private Connection connection;
   private Channel channel;
+  private static final String REMOTE_HOST_NAME = "172.31.31.103";
+  private static final String LOCAL_HOST_NAME = "localhost";
 
   public void init() {
     om = new ObjectMapper();
-    rabbitMQHostName = "localhost";
+    rabbitMQHostName = REMOTE_HOST_NAME;
 
     factory = new ConnectionFactory();
     factory.setHost(rabbitMQHostName);
@@ -176,7 +178,7 @@ public class SkierServlet extends HttpServlet {
 
       // Add to queue
       String response = rpcClient.call(liftRideString);
-      System.out.println("Response: " + response);
+//      System.out.println("Response: " + response);
 
       // Send OK status and response
       res.setStatus(HttpServletResponse.SC_OK);

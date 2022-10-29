@@ -32,7 +32,7 @@ public class RPCClient implements AutoCloseable {
 
     channel.basicPublish("", requestQueueName, props, message.getBytes("UTF-8"));
 
-    System.out.println("Adding liftRide to queue with corrId: " + corrId);
+//    System.out.println("Adding liftRide to queue with corrId: " + corrId);
 
     final CompletableFuture<String> response = new CompletableFuture<>();
 
