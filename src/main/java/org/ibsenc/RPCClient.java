@@ -8,12 +8,15 @@ import com.rabbitmq.client.ConnectionFactory;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RPCClient implements AutoCloseable {
 
   private Connection connection;
   private Channel channel;
   private String requestQueueName = "rpc_queue";
+  private final Logger logger = LoggerFactory.getLogger(RPCClient.class);
 
   public RPCClient(Connection connection, Channel channel) throws IOException, TimeoutException {
     this.connection = connection;
@@ -31,8 +34,7 @@ public class RPCClient implements AutoCloseable {
         .build();
 
     channel.basicPublish("", requestQueueName, props, message.getBytes("UTF-8"));
-
-//    System.out.println("Adding liftRide to queue with corrId: " + corrId);
+    logger.debug("Successfully published message to the queue with corrId: " + corrId);
 
     final CompletableFuture<String> response = new CompletableFuture<>();
 
