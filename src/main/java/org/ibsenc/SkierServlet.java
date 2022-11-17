@@ -48,14 +48,15 @@ public class SkierServlet extends HttpServlet {
   private ConnectionFactory factory;
   private Connection connection;
   private Channel channel;
-  private static final String REMOTE_HOST_NAME = "100.20.70.143";
+  private static final String REMOTE_HOST_NAME_ELASTIC = "100.20.70.143";
+  private static final String REMOTE_HOST_NAME_PUBLIC = "52.25.165.233";
   private static final String REMOTE_PRIVATE_IP = "172.31.31.103";
   private static final String LOCAL_HOST_NAME = "localhost";
   private final Logger logger = LoggerFactory.getLogger(SkierServlet.class);
 
   public void init() {
     om = new ObjectMapper();
-    rabbitMQHostName = REMOTE_HOST_NAME;
+    rabbitMQHostName = REMOTE_HOST_NAME_ELASTIC;
 
     factory = new ConnectionFactory();
     factory.setHost(rabbitMQHostName);
@@ -68,9 +69,11 @@ public class SkierServlet extends HttpServlet {
       logger.info("Successfully connected to remote RabbitMQ");
     } catch (IOException e) {
       logger.error("Failed to connect to remote RabbitMQ", e);
+      e.printStackTrace();
       throw new RuntimeException(e);
     } catch (TimeoutException e) {
       logger.error("Failed to connect to remote RabbitMQ", e);
+      e.printStackTrace();
       throw new RuntimeException(e);
     }
     try {
@@ -78,6 +81,7 @@ public class SkierServlet extends HttpServlet {
       logger.info("Successfully created channel");
     } catch (IOException e) {
       logger.error("Failed to create channel", e);
+      e.printStackTrace();
       throw new RuntimeException(e);
     }
 
@@ -86,9 +90,11 @@ public class SkierServlet extends HttpServlet {
       logger.info("Successfully created rpcClient");
     } catch (IOException e) {
       logger.error("Failed to create rpcClient", e);
+      e.printStackTrace();
       throw new RuntimeException(e);
     } catch (TimeoutException e) {
       logger.error("Failed to create rpcClient", e);
+      e.printStackTrace();
       throw new RuntimeException(e);
     }
   }
